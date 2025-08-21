@@ -1,0 +1,165 @@
+import { StyleSheet } from "react-native";
+
+export const styles = StyleSheet.create({
+    card: {
+      backgroundColor: "#fff",
+      borderRadius: 12,
+      padding: 16,
+      marginVertical: 8,
+      marginHorizontal: 16,
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 8,
+    },
+    name: {
+      fontSize: 20,
+      fontWeight: "bold",
+      color: "#333",
+      flex: 1,
+    },
+    category: {
+      fontSize: 12,
+      color: "#666",
+      backgroundColor: "#f0f0f0",
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      marginLeft: 8,
+    },
+    description: {
+      fontSize: 14,
+      color: "#666",
+      lineHeight: 20,
+      marginBottom: 16,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: "#333",
+      marginBottom: 12,
+    },
+    sizesContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 16,
+    },
+    sizeButton: {
+      backgroundColor: "#f8f9fa",
+      borderWidth: 2,
+      borderColor: "#e9ecef",
+      borderRadius: 8,
+      padding: 12,
+      minWidth: 100,
+      alignItems: "center",
+    },
+    sizeButtonSelected: {
+      backgroundColor: "#e3f2fd",
+      borderColor: "#2196f3",
+    },
+    sizeText: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: "#333",
+      marginBottom: 4,
+    },
+    sizeTextSelected: {
+      color: "#2196f3",
+    },
+    priceText: {
+      fontSize: 16,
+      fontWeight: "bold",
+      color: "#666",
+    },
+    priceTextSelected: {
+      color: "#2196f3",
+    },
+    orderSection: {
+      backgroundColor: "#f8f9fa",
+      borderRadius: 8,
+      padding: 16,
+      marginTop: 8,
+    },
+    quantityContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    quantityLabel: {
+      fontSize: 16,
+      fontWeight: "500",
+      color: "#333",
+    },
+    quantityControls: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    quantityButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: "#fff",
+      borderWidth: 1,
+      borderColor: "#ddd",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    quantityButtonText: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: "#333",
+    },
+    quantityButtonDisabled: {
+      color: "#ccc",
+    },
+    quantityText: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: "#333",
+      marginHorizontal: 16,
+      minWidth: 30,
+      textAlign: "center",
+    },
+    addToOrderContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    totalText: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: "#333",
+    },
+    addButton: {
+      backgroundColor: "#4caf50",
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      borderRadius: 8,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 12,
+    },
+    addButtonText: {
+      fontSize: 16,
+      fontWeight: "bold",
+      color: "#fff",
+    },
+    selectedCard: {
+      borderWidth: 2,
+      borderColor: "#4caf50",
+      backgroundColor: "#f8f9fa",
+    },
+  });
+  
