@@ -114,8 +114,16 @@ export const Checkout: React.FC<CheckoutProps> = ({
 
   return (
     <View style={styles.container} testID={testID}>
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4caf50" />
+            <Text style={styles.loadingText}>Submitting your order...</Text>
+          </View>
+        </View>
+      )}
       <ScrollView
-        style={styles.scrollView}
+        style={[styles.scrollView, loading && styles.disabledView]}
         contentContainerStyle={styles.scrollContent}
       >
         <Text style={styles.title}>Customer Information</Text>

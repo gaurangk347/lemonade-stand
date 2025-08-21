@@ -26,7 +26,15 @@ type OrderAction =
   | { type: "UPDATE_QUANTITY"; payload: { itemId: string; quantity: number } }
   | { type: "UPDATE_CUSTOMER"; payload: Customer }
   | { type: "SET_LOADING"; payload: boolean }
-  | { type: "SET_ERROR"; payload: string | null }
+  | {
+      type: "SET_ERROR";
+      payload: string | null;
+      meta?: {
+        originalError?: string;
+        isRetryable?: boolean;
+        code?: string;
+      };
+    }
   | { type: "ORDER_SUBMITTED"; payload: Order }
   | { type: "CLEAR_ORDER" }
   | { type: "CALCULATE_TOTAL" };
@@ -37,6 +45,11 @@ interface OrderState {
   orderHistory: Order[];
   loading: boolean;
   error: string | null;
+  errorMetadata?: {
+    originalError?: string;
+    isRetryable?: boolean;
+    code?: string;
+  };
 }
 
 // Initial state
@@ -57,6 +70,19 @@ const initialState: OrderState = {
 // Reducer
 const orderReducer = (state: OrderState, action: OrderAction): OrderState => {
   switch (action.type) {
+    case "SET_LOADING":
+      return {
+        ...state,
+        loading: action.payload,
+      };
+
+    case "SET_ERROR":
+      return {
+        ...state,
+        error: action.payload,
+        errorMetadata: action.meta,
+      };
+
     case "ADD_ITEM": {
       const newItem: OrderItem = {
         ...action.payload,
@@ -173,21 +199,6 @@ const orderReducer = (state: OrderState, action: OrderAction): OrderState => {
       };
     }
 
-    case "SET_LOADING": {
-      return {
-        ...state,
-        loading: action.payload,
-      };
-    }
-
-    case "SET_ERROR": {
-      return {
-        ...state,
-        error: action.payload,
-        loading: false,
-      };
-    }
-
     case "ORDER_SUBMITTED": {
       return {
         ...state,
@@ -215,6 +226,7 @@ const orderReducer = (state: OrderState, action: OrderAction): OrderState => {
       return {
         ...state,
         currentOrder: updatedOrder,
+        loading: false,
       };
     }
 
@@ -250,28 +262,112 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
     dispatch({ type: "UPDATE_CUSTOMER", payload: customer });
   }, []);
 
-  const submitOrder = useCallback(async (): Promise<string | null> => {
+  const MAX_RETRY_ATTEMPTS = 3;
+  const INITIAL_RETRY_DELAY = 1000; // 1 second
+
+  const submitOrder = useCallback(async () => {
     dispatch({ type: "SET_LOADING", payload: true });
     dispatch({ type: "SET_ERROR", payload: null });
 
-    try {
-      const response: ApiResponse<Order> = await api.post(
-        "/api/orders",
-        state.currentOrder
-      );
+    let attempt = 0;
+    let lastError: Error | null = null;
 
-      if (response.success && response.data) {
-        dispatch({ type: "ORDER_SUBMITTED", payload: response.data });
-        return response.data.confirmationNumber || null;
-      } else {
-        throw new Error(response.message || "Failed to submit order");
+    const isTransientError = (error: Error): boolean => {
+      const transientErrors = [
+        "network error",
+        "timeout",
+        "server error",
+        "service unavailable",
+        "try again",
+        "rate limit",
+      ];
+
+      const errorMessage = error.message.toLowerCase();
+      return transientErrors.some((term) => errorMessage.includes(term));
+    };
+
+    const calculateBackoff = (attempt: number): number => {
+      // Exponential backoff with jitter
+      const baseDelay = Math.min(
+        INITIAL_RETRY_DELAY * Math.pow(2, attempt),
+        10000
+      );
+      const jitter = Math.random() * 1000; // Add up to 1s of jitter
+      return baseDelay + jitter;
+    };
+
+    while (attempt < MAX_RETRY_ATTEMPTS) {
+      try {
+        const response: ApiResponse<Order> = await api.post(
+          "/api/orders",
+          state.currentOrder
+        );
+
+        if (response.success && response.data) {
+          dispatch({ type: "ORDER_SUBMITTED", payload: response.data });
+          dispatch({ type: "SET_LOADING", payload: false });
+          return {
+            confirmationNumber: response.data.confirmationNumber || null,
+            error: null,
+          };
+        } else {
+          dispatch({ type: "SET_LOADING", payload: false });
+          throw new Error(response.message || "Failed to submit order");
+        }
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        // If it's not a transient error or we've reached max attempts, break the retry loop
+        if (
+          !isTransientError(lastError) ||
+          attempt === MAX_RETRY_ATTEMPTS - 1
+        ) {
+          break;
+        }
+
+        // Calculate backoff and wait before retrying
+        const backoff = calculateBackoff(attempt);
+        await new Promise((resolve) => setTimeout(resolve, backoff));
+        attempt++;
       }
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "An unexpected error occurred";
-      dispatch({ type: "SET_ERROR", payload: errorMessage });
-      return null;
     }
+
+    // If we get here, all attempts failed
+    const errorMessage = lastError?.message || "An unexpected error occurred";
+    const isNetworkError = lastError?.message
+      ?.toLowerCase()
+      .includes("network");
+    const userFriendlyMessage = isNetworkError
+      ? "Unable to connect to the server. Please check your internet connection and try again."
+      : `Failed to submit order: ${errorMessage}`;
+
+    const isRetryable = isTransientError(lastError || new Error(""));
+
+    dispatch({
+      type: "SET_ERROR",
+      payload: userFriendlyMessage,
+      meta: {
+        originalError: errorMessage,
+        isRetryable,
+      },
+    });
+
+    // Make sure to set loading to false when done
+    dispatch({ type: "SET_LOADING", payload: false });
+
+    const result: {
+      confirmationNumber: string | null;
+      error: string | null;
+      originalError?: string;
+      isRetryable?: boolean;
+    } = {
+      confirmationNumber: null,
+      error: userFriendlyMessage,
+      originalError: errorMessage,
+      isRetryable,
+    };
+
+    return result;
   }, [state.currentOrder]);
 
   const clearOrder = useCallback(() => {
@@ -296,9 +392,7 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
     calculateTotal,
   };
 
-  return (
-    <OrderContext.Provider value={value}>{children}</OrderContext.Provider>
-  );
+  return <OrderContext value={value}>{children}</OrderContext>;
 };
 
 // Custom hook

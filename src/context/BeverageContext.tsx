@@ -120,11 +120,7 @@ export const BeverageProvider: React.FC<BeverageProviderProps> = ({
     refreshBeverages,
   };
 
-  return (
-    <BeverageContext.Provider value={value}>
-      {children}
-    </BeverageContext.Provider>
-  );
+  return <BeverageContext value={value}>{children}</BeverageContext>;
 };
 
 // Custom hook

@@ -13,17 +13,6 @@ import { BeverageProvider } from "./context/BeverageContext";
 import { OrderProvider } from "./context/OrderContext";
 import { Navigation } from "./screens";
 
-// Load assets
-const assets = [
-  require("./assets/newspaper.png"),
-  require("./assets/bell.png"),
-];
-
-// Preload assets
-const loadAssets = async () => {
-  await Promise.all(assets.map((asset) => Asset.loadAsync(asset)));
-};
-
 // Initialize the app
 const AppContent: React.FC = () => {
   const [isReady, setIsReady] = React.useState(false);
@@ -38,14 +27,8 @@ const AppContent: React.FC = () => {
 
   React.useEffect(() => {
     async function prepare() {
-      try {
-        await loadAssets();
-      } catch (e) {
-        console.warn(e);
-      } finally {
-        setIsReady(true);
-        await SplashScreen.hideAsync();
-      }
+      setIsReady(true);
+      await SplashScreen.hideAsync();
     }
 
     prepare();

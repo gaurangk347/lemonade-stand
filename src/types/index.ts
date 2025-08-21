@@ -75,16 +75,28 @@ export interface BeverageContextType {
   refreshBeverages: () => Promise<void>;
 }
 
+export interface ErrorMetadata {
+  originalError?: string;
+  isRetryable?: boolean;
+  code?: string;
+}
+
 export interface OrderContextType {
   currentOrder: Order;
   orderHistory: Order[];
   loading: boolean;
   error: string | null;
+  errorMetadata?: ErrorMetadata;
   addItem: (item: Omit<OrderItem, 'id' | 'subtotal'>) => void;
   removeItem: (itemId: string) => void;
   updateItemQuantity: (itemId: string, quantity: number) => void;
   updateCustomer: (customer: Customer) => void;
-  submitOrder: () => Promise<string | null>; // returns confirmation number
+  submitOrder: () => Promise<{
+    confirmationNumber: string | null;
+    error: string | null;
+    originalError?: string;
+    isRetryable?: boolean;
+  }>;
   clearOrder: () => void;
   calculateTotal: () => number;
 }

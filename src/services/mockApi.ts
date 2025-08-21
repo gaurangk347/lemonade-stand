@@ -113,10 +113,21 @@ export const mockApi = {
 
   // Submit order
   async submitOrder(order: Omit<Order, 'id' | 'confirmationNumber'>): Promise<ApiResponse<Order>> {
-    await delay(1200);
+    // Add a delay to show loading state
+    await delay(2000);
     
-    if (shouldSimulateFailure()) {
-      throw new Error('Failed to submit order. Please try again.');
+    // 50% chance of failure for testing
+    if (Math.random() < 0.5) {
+      // Different error messages for variety
+      const errors = [
+        'Network error: Could not connect to server',
+        'Server timeout: Please try again',
+        'Temporary service disruption',
+        'Failed to process payment',
+        'Order submission failed. Please check your connection and try again.'
+      ];
+      const randomError = errors[Math.floor(Math.random() * errors.length)];
+      throw new Error(randomError);
     }
 
     // Validate order

@@ -27,13 +27,7 @@ export const Navigation = () => {
   const { currentOrder, clearOrder } = useOrder();
 
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: true,
-        headerTitle: "Our Menu",
-        headerBackTitle: "Back",
-      }}
-    >
+    <Stack.Navigator>
       <Stack.Screen
         name="BeverageList"
         options={({ navigation }) => ({
@@ -104,9 +98,10 @@ export const Navigation = () => {
       <Stack.Screen
         name="Confirmation"
         options={{
-          title: "Our Menu",
-          headerLeft: () => null, // This removes the back button
-          gestureEnabled: false, // This disables the swipe back gesture
+          title: "Order Confirmation",
+          headerLeft: () => null,
+          gestureEnabled: false,
+          headerBackVisible: false,
         }}
       >
         {({ route, navigation }) => (

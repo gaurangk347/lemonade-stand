@@ -1,5 +1,11 @@
 import React from "react";
-import { Text, View, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
+import {
+  Text,
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+} from "react-native";
 import { commonStyles } from "../styles";
 
 export interface ConfirmationProps {
@@ -39,9 +45,10 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
     <View style={styles.confirmationContainer} testID={testID}>
       <View style={styles.confirmationCard}>
         <Text style={styles.confirmationIcon}>✅</Text>
-        <Text style={styles.confirmationTitle}>Order Confirmed!</Text>
+        <Text style={styles.confirmationTitle}>Thank You For Your Order!</Text>
         <Text style={styles.confirmationMessage}>
-          Thank you for your order. We're preparing your delicious beverages now!
+          Thank you for your order. We're preparing your delicious beverages
+          now!
         </Text>
 
         <View style={styles.confirmationDetails}>
