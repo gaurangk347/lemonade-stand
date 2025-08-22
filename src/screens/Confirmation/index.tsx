@@ -11,36 +11,14 @@ import { commonStyles } from "../styles";
 export interface ConfirmationProps {
   confirmationNumber: string;
   onNewOrder: () => void;
-  isLoading?: boolean;
-  error?: string | null;
   testID?: string;
 }
 
 export const Confirmation: React.FC<ConfirmationProps> = ({
   confirmationNumber,
   onNewOrder,
-  isLoading = false,
-  error = null,
   testID,
 }) => {
-  if (isLoading) {
-    return (
-      <View style={commonStyles.loadingContainer} testID={testID}>
-        <ActivityIndicator size="large" color="#4caf50" />
-        <Text style={commonStyles.loadingText}>Finalizing your order...</Text>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={commonStyles.errorContainer} testID={testID}>
-        <Text style={commonStyles.errorTitle}>Confirmation Error</Text>
-        <Text style={commonStyles.errorMessage}>{error}</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.confirmationContainer} testID={testID}>
       <View style={styles.confirmationCard}>

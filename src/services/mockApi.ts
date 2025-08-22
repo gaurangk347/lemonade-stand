@@ -1,8 +1,12 @@
 // src/services/mockApi.ts
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Beverage, Order, ApiResponse } from '../types';
 
+const ORDERS_STORAGE_KEY = '@LemonadeStand:orders';
+
 // Mock database
+let orderCounter = 1000; // Global order counter
 let beverages: Beverage[] = [
   {
     id: '8f3e7a6d-4c1b-9e2f-0a5d-7b6c8d9e0f1a',
@@ -72,8 +76,30 @@ let beverages: Beverage[] = [
   }
 ];
 
-let orders: Order[] = [];
-let orderCounter = 1000; // Start confirmation numbers at 1000
+
+const storage = {
+  // Save orders to storage
+  async saveOrders(ordersToSave: Order[]) {
+    try {
+      await AsyncStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(ordersToSave));
+    } catch (error) {
+      console.error('Error saving orders:', error);
+      throw new Error('Failed to save orders');
+    }
+  },
+  
+  // Get orders with optional filter
+  async getOrders(filterFn?: (order: Order) => boolean) {
+    try {
+      const savedOrders = await AsyncStorage.getItem(ORDERS_STORAGE_KEY);
+      const orders = savedOrders ? JSON.parse(savedOrders) : [];
+      return filterFn ? orders.filter(filterFn) : [...orders];
+    } catch (error) {
+      console.error('Error getting orders:', error);
+      return [];
+    }
+  }
+};
 
 // Simulate network delay
 const delay = (ms: number = 800): Promise<void> => 
@@ -98,44 +124,29 @@ export const mockApi = {
     };
   },
 
-  // Get beverage by ID
-  async getBeverage(id: string): Promise<ApiResponse<Beverage | null>> {
-    await delay(400);
-    
-    const beverage = beverages.find(b => b.id === id);
-    
-    return {
-      data: beverage || null,
-      success: !!beverage,
-      message: beverage ? 'Beverage found' : 'Beverage not found'
-    };
-  },
-
   // Submit order
   async submitOrder(order: Omit<Order, 'id' | 'confirmationNumber'>): Promise<ApiResponse<Order>> {
     // Add a delay to show loading state
-    await delay(2000);
+    await delay(1000);
     
-    // 50% chance of failure for testing
-    if (Math.random() < 0.5) {
-      // Different error messages for variety
+    // 20% chance of failure for testing (reduced from 50% for better UX)
+    if (Math.random() < 0.2) {
       const errors = [
         'Network error: Could not connect to server',
         'Server timeout: Please try again',
         'Temporary service disruption',
-        'Failed to process payment',
-        'Order submission failed. Please check your connection and try again.'
+        'Failed to process payment'
       ];
       const randomError = errors[Math.floor(Math.random() * errors.length)];
       throw new Error(randomError);
     }
 
     // Validate order
-    if (!order.items || order.items.length === 0) {
+    if (!order.items?.length) {
       throw new Error('Order must contain at least one item');
     }
 
-    if (!order.customer.name || !order.customer.name.trim()) {
+    if (!order.customer?.name?.trim()) {
       throw new Error('Customer name is required');
     }
 
@@ -143,118 +154,168 @@ export const mockApi = {
       throw new Error('Either email or phone number is required');
     }
 
-    // Create new order with ID and confirmation number
-    const newOrder: Order = {
-      ...order,
-      id: `order_${Date.now()}`,
-      confirmationNumber: `LM${orderCounter++}`,
-      status: 'confirmed',
-      createdAt: new Date().toISOString()
-    };
+    try {
+      // Always get fresh orders from storage
+      const currentOrders = await storage.getOrders();
+      
+      // Create new order
+      const newOrder: Order = {
+        ...order,
+        id: `order_${Date.now()}`,
+        confirmationNumber: `LM${orderCounter++}`,
+        status: 'confirmed',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        items: [...order.items] // Ensure items are copied
+      };
 
-    orders.push(newOrder);
+      // Save the updated orders list
+      await storage.saveOrders([...currentOrders, newOrder]);
 
-    return {
-      data: newOrder,
-      success: true,
-      message: 'Order submitted successfully'
-    };
+      return {
+        data: newOrder,
+        success: true,
+        message: 'Order submitted successfully'
+      };
+    } catch (error) {
+      console.error('Error in submitOrder:', error);
+      throw new Error('Failed to process order. Please try again.');
+    }
   },
 
   // Get order by ID
-  async getOrder(id: string): Promise<ApiResponse<Order | null>> {
-    await delay(400);
-    
-    const order = orders.find(o => o.id === id);
-    
-    return {
-      data: order || null,
-      success: !!order,
-      message: order ? 'Order found' : 'Order not found'
-    };
-  },
+  async getOrder(orderId: string): Promise<ApiResponse<Order | null>> {
+    try {
+      if (shouldSimulateFailure()) {
+        throw new Error('Random API failure');
+      }
+      
+      await delay(300);
+      const orders = await storage.getOrders();
 
-  // Get orders by confirmation number
-  async getOrderByConfirmation(confirmationNumber: string): Promise<ApiResponse<Order | null>> {
-    await delay(400);
-    
-    const order = orders.find(o => o.confirmationNumber === confirmationNumber);
-    
-    return {
-      data: order || null,
-      success: !!order,
-      message: order ? 'Order found' : 'Order not found'
-    };
-  },
-
-  // Admin functions (for testing/demo purposes)
-  async addBeverage(beverage: Omit<Beverage, 'id'>): Promise<ApiResponse<Beverage>> {
-    await delay(600);
-    
-    const newBeverage: Beverage = {
-      ...beverage,
-      id: `beverage_${Date.now()}`
-    };
-    
-    beverages.push(newBeverage);
-    
-    return {
-      data: newBeverage,
-      success: true,
-      message: 'Beverage added successfully'
-    };
-  },
-
-  // Update beverage prices (simulate dynamic pricing)
-  async updateBeveragePrices(beverageId: string, priceMultiplier: number): Promise<ApiResponse<Beverage | null>> {
-    await delay(600);
-    
-    const beverageIndex = beverages.findIndex(b => b.id === beverageId);
-    
-    if (beverageIndex === -1) {
+      const order = orders.find((o: Order) => o.id === orderId) || null;
+      
       return {
-        data: null,
+        success: true,
+        message: order ? 'Order found' : 'Order not found',
+        data: order
+      };
+    } catch (error) {
+      console.error('Failed to get order:', error);
+      return {
         success: false,
-        message: 'Beverage not found'
+        message: error instanceof Error ? error.message : 'Failed to get order',
+        data: null
       };
     }
-    
-    // Update prices
-    beverages[beverageIndex].sizes = beverages[beverageIndex].sizes.map(size => ({
-      ...size,
-      price: Math.round((size.price * priceMultiplier) * 100) / 100 // Round to 2 decimal places
-    }));
-    
-    return {
-      data: beverages[beverageIndex],
-      success: true,
-      message: 'Beverage prices updated successfully'
-    };
   },
+  
+  // Get all orders, optionally filtered by email or phone
+  async getCustomerOrders(identifier?: { email?: string; phone?: string } | string): Promise<ApiResponse<Order[]>> {
+    await delay(400);
+    try {
+      if (shouldSimulateFailure()) {
+        throw new Error('Random API failure');
+      }
+      
+      const allOrders = await storage.getOrders();
+      
+      // If no identifier, return all orders
+      if (!identifier) {
+        return {
+          data: allOrders,
+          success: true,
+          message: allOrders.length ? 'Orders found' : 'No orders found'
+        };
+      }
+      
+      // Handle both string (email) and object parameters
+      let email: string | undefined;
+      let phone: string | undefined;
 
-  // Reset data (for testing)
-  async resetData(): Promise<void> {
-    orders = [];
-    orderCounter = 1000;
-    // beverages remain the same as they're the core menu
-  }
+      if (typeof identifier === 'string') {
+        email = identifier;
+      } else if (identifier) {
+        email = identifier.email;
+        phone = identifier.phone;
+      }
+      
+      // If no valid filters, return all orders
+      if (!email && !phone) {
+        return {
+          data: allOrders,
+          success: true,
+          message: allOrders.length ? 'All orders' : 'No orders found'
+        };
+      }
+      
+      // Filter orders based on email and/or phone
+      const filteredOrders = allOrders.filter((order: Order) => {
+        const orderEmail = order.customer?.email?.toLowerCase();
+        const orderPhone = order.customer?.phone;
+        
+        const matchesEmail = !email || (orderEmail && orderEmail === email.toLowerCase());
+        const matchesPhone = !phone || (orderPhone && orderPhone === phone);
+        
+        return matchesEmail || matchesPhone;
+      });
+      
+      return {
+        data: filteredOrders,
+        success: true,
+        message: filteredOrders.length ? 'Matching orders found' : 'No matching orders found'
+      };
+    } catch (error) {
+      console.error('Error getting customer orders:', error);
+      return {
+        data: [],
+        success: false,
+        message: 'Failed to load orders'
+      };
+    }
+  },
 };
 
 // HTTP-like API wrapper (simulates actual HTTP requests)
 export const api = {
   get: async (endpoint: string) => {
-    switch (endpoint) {
-      case '/api/beverages':
+    console.log(`[Mock API] GET ${endpoint}`);
+    
+    // Handle query parameters
+    const [path, query] = endpoint.split('?');
+    const params = new URLSearchParams(query);
+    
+    switch (true) {
+      case path === '/api/beverages':
         return mockApi.getBeverages();
+        
+      case path.startsWith('/api/orders/'):
+        
+        const orderId = path.split('/').pop();
+        if (!orderId) throw new Error('Invalid order ID');
+        return mockApi.getOrder(orderId);
+        
+      case path === '/api/orders':
+        // Handle customer orders with email/phone
+        const email = params.get('email');
+        const phone = params.get('phone');
+        return mockApi.getCustomerOrders({ 
+          email: email || undefined, 
+          phone: phone || undefined 
+        });
+        
       default:
         throw new Error(`Endpoint ${endpoint} not found`);
     }
   },
 
   post: async (endpoint: string, data: any) => {
+    console.log(`[Mock API] POST ${endpoint}`, data ? { body: data } : '');
+    
     switch (endpoint) {
       case '/api/orders':
         return mockApi.submitOrder(data);
+        
       default:
         throw new Error(`Endpoint ${endpoint} not found`);
     }
@@ -271,6 +332,7 @@ export const api = {
         case 'GET':
           response = await api.get(endpoint);
           break;
+          
         case 'POST':
           response = await api.post(endpoint, data);
           break;

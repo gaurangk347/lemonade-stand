@@ -37,12 +37,19 @@ type OrderAction =
     }
   | { type: "ORDER_SUBMITTED"; payload: Order }
   | { type: "CLEAR_ORDER" }
-  | { type: "CALCULATE_TOTAL" };
+  | { type: "CALCULATE_TOTAL" }
+  | { type: "SUBMIT_ORDER_START" }
+  | { type: "SUBMIT_ORDER_SUCCESS"; payload: Order }
+  | { type: "SUBMIT_ORDER_FAILURE"; payload: string }
+  | { type: "SET_ORDERS"; payload: Order[] }
+  | { type: "SET_CURRENT_TRACKED_ORDER"; payload: Order | null };
 
 // State type
 interface OrderState {
   currentOrder: Order;
   orderHistory: Order[];
+  orders: Order[]; // For order history
+  currentTrackedOrder: Order | null; // For order tracking
   loading: boolean;
   error: string | null;
   errorMetadata?: {
@@ -58,11 +65,18 @@ const initialOrder: Order = {
   customer: { name: "", email: "", phone: "" },
   total: 0,
   status: "pending",
+  id: "",
+  statusHistory: [],
+  createdAt: "",
+  updatedAt: "",
+  confirmationNumber: "",
 };
 
 const initialState: OrderState = {
   currentOrder: initialOrder,
   orderHistory: [],
+  orders: [],
+  currentTrackedOrder: null,
   loading: false,
   error: null,
 };
@@ -230,6 +244,36 @@ const orderReducer = (state: OrderState, action: OrderAction): OrderState => {
       };
     }
 
+    case "SUBMIT_ORDER_START":
+      return {
+        ...state,
+        loading: true,
+        error: null,
+      };
+
+    case "SUBMIT_ORDER_SUCCESS":
+      return {
+        ...state,
+        orderHistory: [...state.orderHistory, action.payload],
+        currentOrder: initialOrder,
+        loading: false,
+        error: null,
+      };
+
+    case "SUBMIT_ORDER_FAILURE":
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
+      };
+
+    case "SET_CURRENT_TRACKED_ORDER": {
+      return {
+        ...state,
+        currentTrackedOrder: action.payload,
+      };
+    }
+
     default:
       return state;
   }
@@ -246,153 +290,175 @@ interface OrderProviderProps {
 export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(orderReducer, initialState);
 
+  // Get all orders  // Fetch customer orders by email or phone
+  const getCustomerOrders = useCallback(
+    async (
+      identifier?: string | { email?: string; phone?: string }
+    ): Promise<Order[]> => {
+      try {
+        dispatch({ type: "SET_ERROR", payload: null });
+
+        // Handle both string (email) and object (email/phone) parameters
+        const params =
+          typeof identifier === "string"
+            ? { email: identifier }
+            : identifier || {};
+
+        // Call the mock API directly
+        const response = await api.get("/api/orders");
+
+        if (!response.success) {
+          throw new Error(response.message || "Failed to fetch orders");
+        }
+
+        const orders = (response.data || []) as Order[];
+        dispatch({ type: "SET_ORDERS", payload: orders });
+        return orders;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to fetch orders";
+        dispatch({ type: "SET_ERROR", payload: errorMessage });
+        return [];
+      }
+    },
+    []
+  );
+
+  // Add item to order
   const addItem = useCallback((item: Omit<OrderItem, "id" | "subtotal">) => {
     dispatch({ type: "ADD_ITEM", payload: item });
   }, []);
 
+  // Remove item from order
   const removeItem = useCallback((itemId: string) => {
     dispatch({ type: "REMOVE_ITEM", payload: { itemId } });
   }, []);
 
-  const updateItemQuantity = useCallback((itemId: string, quantity: number) => {
-    dispatch({ type: "UPDATE_QUANTITY", payload: { itemId, quantity } });
-  }, []);
+  // Update item quantity
+  const updateQuantity = useCallback(
+    (itemId: string, quantity: number) => {
+      if (quantity < 1) {
+        removeItem(itemId);
+        return;
+      }
+      dispatch({ type: "UPDATE_QUANTITY", payload: { itemId, quantity } });
+    },
+    [removeItem]
+  );
 
+  // Update customer information
   const updateCustomer = useCallback((customer: Customer) => {
     dispatch({ type: "UPDATE_CUSTOMER", payload: customer });
   }, []);
 
-  const MAX_RETRY_ATTEMPTS = 3;
-  const INITIAL_RETRY_DELAY = 1000; // 1 second
+  // Submit the current order
+  const submitOrder = useCallback(async (): Promise<Order | null> => {
+    try {
+      dispatch({ type: "SUBMIT_ORDER_START" });
 
-  const submitOrder = useCallback(async () => {
-    dispatch({ type: "SET_LOADING", payload: true });
-    dispatch({ type: "SET_ERROR", payload: null });
+      // Call the mock API directly
+      const response = await api.post("/api/orders", state.currentOrder);
 
-    let attempt = 0;
-    let lastError: Error | null = null;
-
-    const isTransientError = (error: Error): boolean => {
-      const transientErrors = [
-        "network error",
-        "timeout",
-        "server error",
-        "service unavailable",
-        "try again",
-        "rate limit",
-      ];
-
-      const errorMessage = error.message.toLowerCase();
-      return transientErrors.some((term) => errorMessage.includes(term));
-    };
-
-    const calculateBackoff = (attempt: number): number => {
-      // Exponential backoff with jitter
-      const baseDelay = Math.min(
-        INITIAL_RETRY_DELAY * Math.pow(2, attempt),
-        10000
-      );
-      const jitter = Math.random() * 1000; // Add up to 1s of jitter
-      return baseDelay + jitter;
-    };
-
-    while (attempt < MAX_RETRY_ATTEMPTS) {
-      try {
-        const response: ApiResponse<Order> = await api.post(
-          "/api/orders",
-          state.currentOrder
-        );
-
-        if (response.success && response.data) {
-          dispatch({ type: "ORDER_SUBMITTED", payload: response.data });
-          dispatch({ type: "SET_LOADING", payload: false });
-          return {
-            confirmationNumber: response.data.confirmationNumber || null,
-            error: null,
-          };
-        } else {
-          dispatch({ type: "SET_LOADING", payload: false });
-          throw new Error(response.message || "Failed to submit order");
-        }
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-
-        // If it's not a transient error or we've reached max attempts, break the retry loop
-        if (
-          !isTransientError(lastError) ||
-          attempt === MAX_RETRY_ATTEMPTS - 1
-        ) {
-          break;
-        }
-
-        // Calculate backoff and wait before retrying
-        const backoff = calculateBackoff(attempt);
-        await new Promise((resolve) => setTimeout(resolve, backoff));
-        attempt++;
+      if (!response.success) {
+        throw new Error(response.message || "Failed to submit order");
       }
+
+      const submittedOrder = response.data;
+      if (!submittedOrder) {
+        throw new Error("No order data returned from server");
+      }
+
+      dispatch({ type: "SUBMIT_ORDER_SUCCESS", payload: submittedOrder });
+      return submittedOrder;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to submit order";
+      dispatch({ type: "SUBMIT_ORDER_FAILURE", payload: errorMessage });
+      return null;
     }
-
-    // If we get here, all attempts failed
-    const errorMessage = lastError?.message || "An unexpected error occurred";
-    const isNetworkError = lastError?.message
-      ?.toLowerCase()
-      .includes("network");
-    const userFriendlyMessage = isNetworkError
-      ? "Unable to connect to the server. Please check your internet connection and try again."
-      : `Failed to submit order: ${errorMessage}`;
-
-    const isRetryable = isTransientError(lastError || new Error(""));
-
-    dispatch({
-      type: "SET_ERROR",
-      payload: userFriendlyMessage,
-      meta: {
-        originalError: errorMessage,
-        isRetryable,
-      },
-    });
-
-    // Make sure to set loading to false when done
-    dispatch({ type: "SET_LOADING", payload: false });
-
-    const result: {
-      confirmationNumber: string | null;
-      error: string | null;
-      originalError?: string;
-      isRetryable?: boolean;
-    } = {
-      confirmationNumber: null,
-      error: userFriendlyMessage,
-      originalError: errorMessage,
-      isRetryable,
-    };
-
-    return result;
   }, [state.currentOrder]);
 
+  // Clear the current order
   const clearOrder = useCallback(() => {
     dispatch({ type: "CLEAR_ORDER" });
   }, []);
 
-  const calculateTotal = useCallback((): number => {
-    return calculateOrderTotal(state.currentOrder.items);
-  }, [state.currentOrder.items]);
+  // Track an order by ID or confirmation number
+  const trackOrder = useCallback(
+    async (identifier?: string): Promise<Order | null> => {
+      if (!identifier) {
+        dispatch({
+          type: "SET_ERROR",
+          payload: "No order identifier provided",
+        });
+        return null;
+      }
+      try {
+        dispatch({ type: "SET_CURRENT_TRACKED_ORDER", payload: null });
+        dispatch({ type: "SET_ERROR", payload: null });
 
-  const value: OrderContextType = {
-    currentOrder: state.currentOrder,
-    orderHistory: state.orderHistory,
-    loading: state.loading,
-    error: state.error,
-    addItem,
-    removeItem,
-    updateItemQuantity,
-    updateCustomer,
-    submitOrder,
-    clearOrder,
-    calculateTotal,
-  };
+        let order: Order | null = null;
 
-  return <OrderContext value={value}>{children}</OrderContext>;
+        // First try by order ID
+        try {
+          const response = (await api.get(
+            `/api/orders/${identifier}`
+          )) as ApiResponse<Order>;
+
+          console.log("response: ", JSON.stringify(response));
+          if (response.success && response.data) {
+            order = response.data;
+          }
+        } catch (error) {
+          // Ignore error and try confirmation number
+        }
+
+        if (!order) {
+          throw new Error("Order not found");
+        }
+
+        dispatch({ type: "SET_CURRENT_TRACKED_ORDER", payload: order });
+        return order;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to fetch order";
+
+        dispatch({
+          type: "SET_ERROR",
+          payload: errorMessage,
+        });
+        return null;
+      }
+    },
+    []
+  );
+
+  return (
+    <OrderContext.Provider
+      value={{
+        // Order state
+        currentOrder: state.currentOrder,
+        orders: state.orders,
+        currentTrackedOrder: state.currentTrackedOrder,
+        loading: state.loading,
+        error: state.error,
+
+        // Order actions
+        addItem,
+        removeItem,
+        updateQuantity,
+        updateCustomer,
+        submitOrder,
+        clearOrder,
+
+        // Order tracking
+        trackOrder,
+        getCustomerOrders,
+      }}
+    >
+      {children}
+    </OrderContext.Provider>
+  );
 };
 
 // Custom hook

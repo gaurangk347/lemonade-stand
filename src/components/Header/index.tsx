@@ -16,10 +16,14 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🍋 Digital Lemonade Stand</Text>
-        <Text style={styles.headerSubtitle}>
-          Fresh • Delicious • Made to Order
-        </Text>
+        <View style={styles.logoContainer}>
+          <View>
+            <Text style={styles.headerTitle}>Digital Lemonade Stand</Text>
+            <Text style={styles.headerSubtitle}>
+              Fresh • Delicious • Made to Order
+            </Text>
+          </View>
+        </View>
       </View>
 
       {currentScreen !== "confirmation" && (

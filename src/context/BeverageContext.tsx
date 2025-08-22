@@ -88,7 +88,9 @@ export const BeverageProvider: React.FC<BeverageProviderProps> = ({
     dispatch({ type: "FETCH_START" });
 
     try {
-      const response: ApiResponse<Beverage[]> = await api.get("/api/beverages");
+      const response = (await api.get("/api/beverages")) as ApiResponse<
+        Beverage[]
+      >;
 
       if (response.success && response.data) {
         dispatch({ type: "FETCH_SUCCESS", payload: response.data });

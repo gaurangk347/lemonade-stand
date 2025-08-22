@@ -39,14 +39,31 @@ export interface Customer {
   address?: Address;
 }
 
+export type OrderStatus = 
+  | 'pending' 
+  | 'confirmed' 
+  | 'preparing' 
+  | 'ready' 
+  | 'out_for_delivery'
+  | 'delivered'
+  | 'cancelled';
+
+export interface OrderStatusUpdate {
+  status: OrderStatus;
+  timestamp: string;
+  message?: string;
+}
+
 export interface Order {
-  id?: string;
+  id: string;
   items: OrderItem[];
   customer: Customer;
   total: number;
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered';
-  createdAt?: string;
-  confirmationNumber?: string;
+  status: OrderStatus;
+  statusHistory: OrderStatusUpdate[];
+  createdAt: string;
+  updatedAt: string;
+  confirmationNumber: string;
 }
 
 export interface ApiResponse<T> {
@@ -82,23 +99,26 @@ export interface ErrorMetadata {
 }
 
 export interface OrderContextType {
+  // Current order being built
   currentOrder: Order;
-  orderHistory: Order[];
+  // List of past orders
+  orders: Order[];
+  // Currently tracked order (for order tracking screen)
+  currentTrackedOrder: Order | null;
   loading: boolean;
   error: string | null;
-  errorMetadata?: ErrorMetadata;
+  
+  // Order building methods
   addItem: (item: Omit<OrderItem, 'id' | 'subtotal'>) => void;
   removeItem: (itemId: string) => void;
-  updateItemQuantity: (itemId: string, quantity: number) => void;
+  updateQuantity: (itemId: string, quantity: number) => void;
   updateCustomer: (customer: Customer) => void;
-  submitOrder: () => Promise<{
-    confirmationNumber: string | null;
-    error: string | null;
-    originalError?: string;
-    isRetryable?: boolean;
-  }>;
+  submitOrder: () => Promise<Order | null>;
   clearOrder: () => void;
-  calculateTotal: () => number;
+  
+  // Order tracking methods
+  trackOrder: (orderId: string) => Promise<Order | null>;
+  getCustomerOrders: (email?: string) => Promise<Order[]>;
 }
 
 // Form types

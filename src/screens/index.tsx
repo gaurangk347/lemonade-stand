@@ -5,7 +5,9 @@ import { BeverageList } from "./BeverageList";
 import { Order } from "./Order";
 import { Checkout } from "./Checkout";
 import { Confirmation } from "./Confirmation";
-import { View } from "react-native";
+import { OrderTracking } from "./OrderTracking";
+import { OrderHistory } from "./OrderHistory";
+import { View, StyleSheet } from "react-native";
 import { HeaderButton } from "../components/HeaderButton";
 
 type RootStackParamList = {
@@ -13,6 +15,8 @@ type RootStackParamList = {
   Order: undefined;
   Checkout: undefined;
   Confirmation: { confirmationNumber: string };
+  OrderTracking: { orderId: string };
+  OrderHistory: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -32,7 +36,13 @@ export const Navigation = () => {
         name="BeverageList"
         options={({ navigation }) => ({
           headerRight: () => (
-            <View style={{ marginRight: 16 }}>
+            <View style={styles.headerButtons}>
+              <HeaderButton
+                icon="history"
+                onPress={() => navigation.navigate("OrderHistory" as never)}
+                testID="order-history-button"
+                style={styles.headerButton}
+              />
               <HeaderButton
                 icon="shopping-cart"
                 badgeCount={currentOrder.items.reduce(
@@ -42,6 +52,7 @@ export const Navigation = () => {
                 )}
                 onPress={() => navigation.navigate("Order" as never)}
                 testID="cart-button"
+                style={styles.headerButton}
               />
             </View>
           ),
@@ -119,9 +130,35 @@ export const Navigation = () => {
           />
         )}
       </Stack.Screen>
+      <Stack.Screen
+        name="OrderTracking"
+        component={OrderTracking}
+        options={{
+          title: "Track Order",
+          headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="OrderHistory"
+        component={OrderHistory}
+        options={{
+          title: "Order History",
+          headerBackTitle: "Back",
+        }}
+      />
     </Stack.Navigator>
   );
 };
+
+const styles = StyleSheet.create({
+  headerButtons: {
+    flexDirection: "row",
+    marginRight: 8,
+  },
+  headerButton: {
+    marginLeft: 8,
+  },
+});
 
 declare global {
   namespace ReactNavigation {

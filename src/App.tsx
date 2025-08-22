@@ -21,7 +21,7 @@ const AppContent: React.FC = () => {
     ...(colorScheme === "dark" ? DarkTheme : DefaultTheme),
     colors: {
       ...(colorScheme === "dark" ? DarkTheme.colors : DefaultTheme.colors),
-      background: "#f5f5f5", // Set your desired background color
+      background: "#f5f5f5",
     },
   };
 

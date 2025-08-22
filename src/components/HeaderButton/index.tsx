@@ -7,6 +7,7 @@ interface HeaderButtonProps {
   badgeCount?: number;
   onPress: () => void;
   testID?: string;
+  style?: object;
 }
 
 export const HeaderButton: React.FC<HeaderButtonProps> = ({
@@ -14,10 +15,11 @@ export const HeaderButton: React.FC<HeaderButtonProps> = ({
   badgeCount = 0,
   onPress,
   testID,
+  style = {},
 }) => {
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[styles.container, style]}
       onPress={onPress}
       testID={testID}
     >
