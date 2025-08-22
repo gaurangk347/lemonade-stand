@@ -1,66 +1,240 @@
-# Starter Template with React Navigation
+# Digital Lemonade Stand Mobile App
 
-This is a minimal starter template for React Native apps using Expo and React Navigation.
+A React Native mobile application for ordering beverages from a digital lemonade stand, built with TypeScript and Expo.
 
-It includes the following:
+## Features
 
-- Example [Native Stack](https://reactnavigation.org/docs/native-stack-navigator) with a nested [Bottom Tab](https://reactnavigation.org/docs/bottom-tab-navigator)
-- Web support with [React Native for Web](https://necolas.github.io/react-native-web/)
-- TypeScript support and configured for React Navigation
-- Automatic [deep link](https://reactnavigation.org/docs/deep-linking) and [URL handling configuration](https://reactnavigation.org/docs/configuring-links)
-- Theme support [based on system appearance](https://reactnavigation.org/docs/themes/#using-the-operating-system-preferences)
-- Expo [Development Build](https://docs.expo.dev/develop/development-builds/introduction/) with [Continuous Native Generation](https://docs.expo.dev/workflow/continuous-native-generation/)
-- Edge-to-edge configured on Android with [`react-native-edge-to-edge`](https://www.npmjs.com/package/react-native-edge-to-edge)
+### Core Features
 
-## Getting Started
+- **Beverage Display**: Browse available drinks with sizes and prices
+- **Dynamic Pricing**: Real-time total calculation as items are added/modified
+- **Customer Information**: Form for name and contact details
+- **Order Processing**: Submit orders and receive confirmation numbers
+- **Backend Integration**: Communicates with mock API endpoints
 
-1. Create a new project using this template:
+### Bonus Features Implemented
 
-   ```sh
-   npx create-expo-app@latest --template react-navigation/template
+- **State Management**: Context API with TypeScript for clean state handling
+- **Input Validation**: Robust client-side validation with error messages
+- **User Interface**: Clean, intuitive design with smooth animations
+- **Error Handling**: Graceful error handling with user-friendly messages
+
+## Technology Stack
+
+- **Frontend**: React Native with Expo
+- **Language**: TypeScript
+- **State Management**: React Context API
+- **Styling**: StyleSheet with responsive design
+- **HTTP Client**: Fetch API with custom error handling
+
+## Project Structure
+
+```
+src/
+├── App.tsx
+├── components/          # Reusable UI components
+│   ├── BeverageCard/
+│   │   ├── index.tsx
+│   │   └── styles.ts
+│   ├── Header/
+│   │   ├── index.tsx
+│   │   └── styles.ts
+│   ├── HeaderButton/
+│   │   └── index.tsx
+│   └── OrderItem/
+│       ├── index.tsx
+│       └── styles.ts
+├── context/            # State management
+│   ├── BeverageContext.tsx
+│   └── OrderContext.tsx
+├── services/           # API services
+│   └── mockApi.ts
+├── types/              # TypeScript type definitions
+│   └── index.ts
+├── utils/              # Utility functions
+│   └── validation.ts
+└── screens/            # Screen components
+    ├── BeverageList/
+    │   ├── index.tsx
+    │   └── styles.ts
+    ├── Checkout/
+    │   ├── index.tsx
+    │   └── styles.ts
+    ├── Confirmation/
+    │   ├── index.tsx
+    │   └── styles.ts
+    ├── Order/
+    │   ├── index.tsx
+    │   └── styles.ts
+    ├── OrderHistory/
+    │   ├── index.tsx
+    │   └── styles.ts
+    ├── OrderTracking/
+    │   ├── index.tsx
+    │   └── styles.ts
+    ├── index.tsx
+    └── styles.ts
+```
+
+## Setup Instructions
+
+### Prerequisites
+
+- Node.js (v16 or higher)
+- npm or yarn
+- Expo CLI (`npm install -g @expo/cli`)
+- Expo Go app on your mobile device (for testing)
+
+### Installation
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/gaurangk347/lemonade-stand
+   cd digital-lemonade-stand
    ```
 
-2. Edit the `app.json` file to configure the `name`, `slug`, `scheme` and bundle identifiers (`ios.bundleIdentifier` and `android.bundleIdentifier`) for your app.
+2. **Install dependencies**
 
-3. Edit the `src/App.tsx` file to start working on your app.
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
 
-## Running the app
+3. **Start the development server**
 
-- Install the dependencies:
+   ```bash
+   npx expo start
+   ```
 
-  ```sh
-  npm install
-  ```
+4. **Run on device/simulator**
+   - Scan QR code with Expo Go app (mobile)
+   - Press `i` for iOS simulator
+   - Press `a` for Android emulator
 
-- Start the development server:
+### Testing
 
-  ```sh
-  npm start
-  ```
+```bash
+# Run all tests
+npm test
 
-- Build and run iOS and Android development builds:
+# Run tests in watch mode
+npm run test:watch
 
-  ```sh
-  npm run ios
-  # or
-  npm run android
-  ```
+# Run tests with coverage
+npm run test:coverage
+```
 
-- In the terminal running the development server, press `i` to open the iOS simulator, `a` to open the Android device or emulator, or `w` to open the web browser.
+## API Endpoints
 
-## Notes
+The app communicates with the following mock API endpoints:
 
-This project uses a [development build](https://docs.expo.dev/develop/development-builds/introduction/) and cannot be run with [Expo Go](https://expo.dev/go). To run the app with Expo Go, edit the `package.json` file, remove the `expo-dev-client` package and `--dev-client` flag from the `start` script.
+- `GET /api/beverages` - Fetch available beverages
+- `POST /api/orders` - Submit new order
+- `GET /api/orders` - Get list of orders
+- `GET /api/orders/:id` - Get order details
 
-We highly recommend using the development builds for normal development and testing.
+### Mock Data Structure
 
-The `ios` and `android` folder are gitignored in the project by default as they are automatically generated during the build process ([Continuous Native Generation](https://docs.expo.dev/workflow/continuous-native-generation/)). This means that you should not edit these folders directly and use [config plugins](https://docs.expo.dev/config-plugins/) instead. However, if you need to edit these folders, you can remove them from the `.gitignore` file so that they are tracked by git.
+```typescript
+interface Beverage {
+  id: string;
+  name: string;
+  description: string;
+  sizes: BeverageSize[];
+}
 
-## Resources
+interface BeverageSize {
+  id: string;
+  name: string;
+  price: number;
+}
 
-- [React Navigation documentation](https://reactnavigation.org/)
-- [Expo documentation](https://docs.expo.dev/)
+interface Order {
+  id: string;
+  items: OrderItem[];
+  customer: Customer;
+  total: number;
+  status: string;
+}
+```
+
+## Design Choices & Assumptions
+
+### State Management
+
+- Used React Context API instead of Redux for simplicity and the app's moderate complexity
+- Separate contexts for beverages and orders to maintain clear separation of concerns
+- Custom hooks (`useBeverages`, `useOrder`) provide clean API for components
+
+### Validation Strategy
+
+- Client-side validation for immediate feedback
+- Reusable validation utilities with TypeScript for type safety
+- Form validation includes required fields, email format, and phone number format
+
+### Error Handling
+
+- User-friendly error messages displayed in UI
+- Graceful degradation when API calls fail
+- Loading states for better user experience
+
+### UI/UX Decisions
+
+- Card-based layout for easy browsing of beverages
+- Sticky order summary for constant visibility of cart contents
+- Progressive disclosure - show details only when needed
+- Consistent color scheme and typography
+
+### Mock Backend
+
+- Realistic API simulation with async responses
+- Error scenarios for testing error handling
+- Persistent data during session (resets on app restart)
+
+## Future Enhancements
+
+If given more time, potential improvements would include:
+
+1. **Comprehensive Testing**: Implement unit and integration tests using Jest and React Native Testing Library
+2. **Persistent Storage**: AsyncStorage for order history
+3. **Push Notifications**: Order status updates
+4. **Payment Integration**: Stripe or similar payment processor
+5. **User Authentication**: Login/signup functionality
+6. **Accessibility**: Enhanced screen reader support
+
+## Testing Strategy (For future enhancement)
+
+### Unit Tests
+
+- Component rendering and prop handling
+- State management context providers and reducers
+- Utility functions (validation, calculations)
+- API service functions
+
+### Integration Tests
+
+- User interactions and state updates
+- Form submission workflows
+- API integration scenarios
+
+### Test Coverage Areas
+
+- Form validation logic
+- Order calculation accuracy
+- Error handling scenarios
+- Component interaction flows
+
+## Known Limitations
+
+- Mock API data resets on app restart
+- No persistent user sessions
+- Limited offline functionality
+- Basic error recovery mechanisms
+- Missing testing
 
 ---
 
-Demo assets are from [lucide.dev](https://lucide.dev/)
+**Contact**: gaurangk347@gmail.com
+**Repository**: https://github.com/gaurangk347/lemonade-stand
