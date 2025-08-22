@@ -237,4 +237,5 @@ If given more time, potential improvements would include:
 ---
 
 **Contact**: gaurangk347@gmail.com
+
 **Repository**: https://github.com/gaurangk347/lemonade-stand
